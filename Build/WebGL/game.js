@@ -6,24 +6,25 @@
 // --- CONFIGURATION & ECONOMY ---
 const CONFIG = {
     reelCount: 3,
-    symbolHeight: 86,
-    symbolWidth: 86,
+    symbolWidth: 78,
+    symbolHeight: 78,
+    slotStepH: 84, // 78px symbol + 6px breathing room
     canvasWidth: 368,
     canvasHeight: 210,
-    reelPositionsX: [14, 141, 269],
-    paylineCenterY: 62, // (210 - 86) / 2 = 62px
+    reelPositionsX: [18, 146, 274],
+    paylineCenterY: 66, // (210 - 78) / 2 = 66px
     startingBalance: 1000,
     defaultBet: 10,
     minBet: 5,
     maxBet: 100,
     betStep: 5,
-    accelerationDuration: 0.3,
-    minSpinDuration: 1.0,
-    decelerationDuration: 0.45,
-    reelStopDelay: 0.35,
+    accelerationDuration: 0.28,
+    minSpinDuration: 0.9,
+    decelerationDuration: 0.42,
+    reelStopDelay: 0.32,
     suspenseDelay: 0.85,
-    maxSpinSpeed: 1600,
-    bounceOvershoot: 16,
+    maxSpinSpeed: 1550,
+    bounceOvershoot: 14,
     freeSpinsAwarded: 5,
     freeSpinsMultiplier: 2,
     symbolWeights: [
@@ -205,7 +206,7 @@ class RNGService {
     }
 }
 
-// --- SINGLE REEL COLUMN (PHYSICS & RENDERING) ---
+// --- REEL COLUMN WITH EXACT CENTER SNAPPING & SPRING BOUNCE ---
 class ReelStrip {
     constructor(index, x, config, rng, images) {
         this.index = index;
@@ -214,9 +215,10 @@ class ReelStrip {
         this.rng = rng;
         this.images = images;
 
-        this.symbols = ['seven', 'bar', 'bell', 'cherry', 'seven', 'bar'];
+        // Circular symbol strip
+        this.symbols = ['seven', 'bar', 'bell', 'cherry', 'seven', 'bar', 'bell', 'cherry'];
         this.state = 'IDLE'; // IDLE, ACCEL, SPIN, DECEL, BOUNCE
-        this.yOffset = 0; // Current scroll offset
+        this.yOffset = 0;
         this.speed = 0;
         this.elapsed = 0;
         this.targetSymbol = null;
@@ -243,7 +245,7 @@ class ReelStrip {
     }
 
     update(dt) {
-        const H = this.config.symbolHeight;
+        const H = this.config.slotStepH; // 84px
 
         if (this.isHighlighted) {
             this.pulseTime += dt;
@@ -271,23 +273,29 @@ class ReelStrip {
                 this.state = 'DECEL';
                 this.elapsed = 0;
 
-                // Calculate exact stopping distance
+                // EXACT MULTIPLE OF H: Snaps dead-center on payline!
                 const decelTime = this.config.decelerationDuration;
                 const minDistance = this.speed * decelTime * 0.5;
-                const steps = Math.ceil(minDistance / H) + 2;
-                const distanceToTravel = steps * H;
+                const currentY = this.yOffset;
+                this.startOffset = currentY;
 
-                this.startOffset = this.yOffset;
-                this.targetOffset = this.startOffset + distanceToTravel;
+                // Exact integer snap to symbol step
+                this.targetOffset = Math.ceil((currentY + minDistance) / H) * H;
 
-                // Inject target symbol at incoming index
-                const incomingIdx = (Math.floor(this.targetOffset / H) + 1) % this.symbols.length;
-                this.symbols[incomingIdx] = this.targetSymbol;
+                // Inject the target symbol at the exact center slot
+                const centerIdx = (Math.floor(this.targetOffset / H) + this.symbols.length * 100) % this.symbols.length;
+                this.symbols[centerIdx] = this.targetSymbol;
+
+                // Fill adjacent rows with varied symbols
+                const prevIdx = (centerIdx - 1 + this.symbols.length) % this.symbols.length;
+                const nextIdx = (centerIdx + 1) % this.symbols.length;
+                if (!this.symbols[prevIdx]) this.symbols[prevIdx] = this.rng.getRandomSymbol();
+                if (!this.symbols[nextIdx]) this.symbols[nextIdx] = this.rng.getRandomSymbol();
             }
         } else if (this.state === 'DECEL') {
             this.elapsed += dt;
             const t = Math.min(1.0, this.elapsed / this.config.decelerationDuration);
-            // Ease-out cubic: 1 - (1 - t)^3
+            // Ease-out cubic
             const easeOut = 1 - Math.pow(1 - t, 3);
             this.yOffset = this.startOffset + (this.targetOffset - this.startOffset) * easeOut;
 
@@ -298,7 +306,7 @@ class ReelStrip {
             }
         } else if (this.state === 'BOUNCE') {
             this.bounceElapsed += dt;
-            const bounceDuration = 0.22;
+            const bounceDuration = 0.20;
             const t = this.bounceElapsed / bounceDuration;
 
             if (t >= 1.0) {
@@ -308,24 +316,24 @@ class ReelStrip {
                     this.onStopCallback(this.index, this.targetSymbol);
                 }
             } else {
-                // Mechanical spring bounce: damped sine
-                const offset = Math.sin(t * Math.PI) * this.config.bounceOvershoot * Math.exp(-t * 3.5);
+                // Mechanical spring bounce
+                const offset = Math.sin(t * Math.PI) * this.config.bounceOvershoot * Math.exp(-t * 3.8);
                 this.yOffset = this.targetOffset + offset;
             }
         }
     }
 
     render(ctx) {
-        const H = this.config.symbolHeight;
-        const W = this.config.symbolWidth;
-        const centerY = this.config.paylineCenterY; // 62px
+        const H = this.config.slotStepH; // 84px
+        const W = this.config.symbolWidth; // 78px
+        const symH = this.config.symbolHeight; // 78px
+        const centerY = this.config.paylineCenterY; // 66px
 
-        // Determine symbol positions relative to center payline
         const totalSymbols = this.symbols.length;
         const currentScrollIndex = Math.floor(this.yOffset / H);
         const subOffset = this.yOffset % H;
 
-        // Draw 5 visible/partially visible slots
+        // Render 5 vertical slots: -2, -1, 0 (center), 1, 2
         for (let row = -2; row <= 2; row++) {
             const symIndex = (currentScrollIndex - row + totalSymbols * 100) % totalSymbols;
             const symId = this.symbols[symIndex];
@@ -335,23 +343,22 @@ class ReelStrip {
 
             const drawY = centerY + (row * H) + subOffset;
 
-            // Only draw within vertical window boundaries
-            if (drawY > -H && drawY < this.config.canvasHeight + H) {
-                // Win highlight glow for center symbol
-                if (row === 0 && this.isHighlighted && Math.abs(subOffset) < 5) {
-                    const pulse = 1.0 + Math.sin(this.pulseTime * 8) * 0.08;
+            if (drawY > -symH && drawY < this.config.canvasHeight + symH) {
+                // Win highlight for center row
+                if (row === 0 && this.isHighlighted && Math.abs(subOffset) < 4) {
+                    const pulse = 1.0 + Math.sin(this.pulseTime * 7) * 0.07;
                     const glowW = W * pulse;
-                    const glowH = H * pulse;
+                    const glowH = symH * pulse;
                     const glowX = this.x - (glowW - W) / 2;
-                    const glowY = drawY - (glowH - H) / 2;
+                    const glowY = drawY - (glowH - symH) / 2;
 
                     ctx.save();
                     ctx.shadowColor = '#ffd700';
-                    ctx.shadowBlur = 18;
+                    ctx.shadowBlur = 16;
                     ctx.drawImage(img, glowX, glowY, glowW, glowH);
                     ctx.restore();
                 } else {
-                    ctx.drawImage(img, this.x, drawY, W, H);
+                    ctx.drawImage(img, this.x, drawY, W, symH);
                 }
             }
         }
@@ -460,7 +467,7 @@ class SlotGameApp {
             btnCollect: document.getElementById('btnCollect')
         };
 
-        // Set initial resting machine cabinet frame
+        // Initial resting machine cabinet frame
         this.dom.machineStage.style.backgroundImage = "url('assets/machine_frame_up.png')";
 
         // Event listeners
@@ -488,7 +495,7 @@ class SlotGameApp {
             cherry: 'assets/symbol_cherry.png'
         };
 
-        // Also preload cabinet frames
+        // Preload lever cabinet frames
         ['assets/machine_frame_up.png', 'assets/machine_frame_mid.png', 'assets/machine_frame_down.png'].forEach(src => {
             const img = new Image();
             img.src = src;
@@ -552,18 +559,18 @@ class SlotGameApp {
             reel.render(this.ctx);
         }
 
-        // 3. Draw subtle cylindrical 3D depth shadows at top and bottom
-        const gradTop = this.ctx.createLinearGradient(0, 0, 0, 28);
+        // 3. Draw 3D cylindrical shadow overlay at top and bottom
+        const gradTop = this.ctx.createLinearGradient(0, 0, 0, 24);
         gradTop.addColorStop(0, 'rgba(0, 0, 0, 0.45)');
         gradTop.addColorStop(1, 'rgba(0, 0, 0, 0)');
         this.ctx.fillStyle = gradTop;
-        this.ctx.fillRect(0, 0, CONFIG.canvasWidth, 28);
+        this.ctx.fillRect(0, 0, CONFIG.canvasWidth, 24);
 
-        const gradBottom = this.ctx.createLinearGradient(0, CONFIG.canvasHeight - 28, 0, CONFIG.canvasHeight);
+        const gradBottom = this.ctx.createLinearGradient(0, CONFIG.canvasHeight - 24, 0, CONFIG.canvasHeight);
         gradBottom.addColorStop(0, 'rgba(0, 0, 0, 0)');
         gradBottom.addColorStop(1, 'rgba(0, 0, 0, 0.45)');
         this.ctx.fillStyle = gradBottom;
-        this.ctx.fillRect(0, CONFIG.canvasHeight - 28, CONFIG.canvasWidth, 28);
+        this.ctx.fillRect(0, CONFIG.canvasHeight - 24, CONFIG.canvasWidth, 24);
     }
 
     handleLeverPull() {
@@ -637,7 +644,7 @@ class SlotGameApp {
             setTimeout(() => {
                 this.reels[1].requestStop(this.currentOutcome[1]);
 
-                // Anticipation Suspense: if reels 0 and 1 match!
+                // Suspense check: if reels 0 and 1 match!
                 const isSuspense = (this.currentOutcome[0] === this.currentOutcome[1]);
                 const delay = isSuspense ? (CONFIG.reelStopDelay + CONFIG.suspenseDelay) : CONFIG.reelStopDelay;
 

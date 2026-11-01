@@ -10,7 +10,7 @@ html, body {
     width: 100%;
     height: 100%;
     overflow: hidden;
-    background: #080314 radial-gradient(circle at center, #200d33 0%, #070210 100%);
+    background: #080314 radial-gradient(circle at center, #220d38 0%, #06020e 100%);
     color: #fff;
     font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
     display: flex;
@@ -27,8 +27,9 @@ html, body {
     flex-direction: column;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 16px;
+    padding: 6px 12px;
     box-sizing: border-box;
+    overflow: hidden;
 }
 
 /* Top HUD */
@@ -37,12 +38,13 @@ html, body {
     justify-content: space-between;
     align-items: center;
     width: 100%;
-    max-width: 780px;
-    padding: 6px 18px;
-    background: rgba(22, 14, 40, 0.9);
-    border: 2px solid #5a3d8a;
-    border-radius: 10px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.7);
+    max-width: 680px;
+    height: 44px;
+    padding: 4px 16px;
+    background: rgba(24, 15, 45, 0.92);
+    border: 1.5px solid #69489f;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.75);
     flex-shrink: 0;
 }
 
@@ -53,7 +55,7 @@ html, body {
 }
 
 .hud-label {
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 800;
     letter-spacing: 1.5px;
     color: #bfa5e6;
@@ -61,11 +63,12 @@ html, body {
 }
 
 .hud-value {
-    font-size: 20px;
+    font-size: 19px;
     font-weight: 900;
     font-family: 'Courier New', Courier, monospace;
     color: #ffd700;
     text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+    line-height: 1.1;
 }
 
 .hud-value.win-highlight {
@@ -78,11 +81,11 @@ html, body {
     background: linear-gradient(135deg, #ff0077, #7928ca);
     color: #fff;
     font-weight: 900;
-    padding: 4px 12px;
-    border-radius: 16px;
-    font-size: 12px;
+    padding: 3px 10px;
+    border-radius: 14px;
+    font-size: 11px;
     letter-spacing: 1px;
-    box-shadow: 0 0 14px #ff0077;
+    box-shadow: 0 0 12px #ff0077;
     animation: pulseGlow 1s infinite alternate;
 }
 
@@ -91,7 +94,7 @@ html, body {
     to { transform: scale(1.04); box-shadow: 0 0 16px #ff0077; }
 }
 
-/* Machine Stage - Auto Scaled to Fit Viewport */
+/* Machine Stage Wrapper - Dynamically fits available height */
 .machine-stage-wrapper {
     position: relative;
     flex: 1;
@@ -100,12 +103,13 @@ html, body {
     align-items: center;
     justify-content: center;
     width: 100%;
+    padding: 4px 0;
 }
 
 .machine-stage {
     position: relative;
     height: 100%;
-    max-height: 540px;
+    max-height: calc(100vh - 165px);
     aspect-ratio: 816 / 624;
     background-repeat: no-repeat;
     background-position: center;
@@ -122,7 +126,7 @@ html, body {
     height: 33.65%;
     overflow: hidden;
     border-radius: 6px;
-    box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.9);
+    box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.95);
     background: #000;
 }
 
@@ -140,18 +144,18 @@ html, body {
     top: 50%;
     height: 2px;
     background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.75), transparent);
-    box-shadow: 0 0 8px rgba(255, 215, 0, 0.8);
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.85);
     pointer-events: none;
     transform: translateY(-50%);
     z-index: 5;
 }
 
-/* Interactive Lever Hotspot on the Right Side of Cabinet */
+/* Interactive Lever Hotspot */
 .lever-hotspot {
     position: absolute;
-    right: 4%;
-    top: 2%;
-    width: 15%;
+    right: 6%;
+    top: 0;
+    width: 13%;
     height: 60%;
     cursor: pointer;
     z-index: 20;
@@ -164,18 +168,18 @@ html, body {
 /* Dynamic Announcement Marquee */
 .message-bar {
     width: 100%;
-    max-width: 780px;
-    padding: 6px 14px;
+    max-width: 680px;
+    height: 30px;
+    padding: 4px 12px;
     background: #110d1f;
     border: 1px solid #3c2a5a;
-    border-radius: 8px;
+    border-radius: 6px;
     text-align: center;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 700;
     letter-spacing: 1px;
     color: #ffd700;
     text-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
-    min-height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -188,11 +192,12 @@ html, body {
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    max-width: 780px;
-    padding: 8px 16px;
-    background: rgba(22, 14, 40, 0.95);
-    border: 2px solid #5a3d8a;
-    border-radius: 10px;
+    max-width: 680px;
+    height: 52px;
+    padding: 6px 14px;
+    background: rgba(22, 14, 42, 0.95);
+    border: 1.5px solid #69489f;
+    border-radius: 8px;
     gap: 8px;
     flex-shrink: 0;
 }
@@ -200,15 +205,15 @@ html, body {
 .control-group {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 }
 
 .btn {
     border: none;
-    border-radius: 8px;
+    border-radius: 6px;
     cursor: pointer;
     font-weight: 800;
-    font-size: 13px;
+    font-size: 12px;
     letter-spacing: 1px;
     text-transform: uppercase;
     transition: all 0.15s ease;
@@ -231,19 +236,19 @@ html, body {
     background: linear-gradient(180deg, #3a2a5c, #211638);
     color: #dfd4f8;
     border: 1px solid #63459c;
-    padding: 8px 12px;
+    padding: 7px 11px;
 }
 
 .btn-secondary:hover:not(:disabled) {
     background: linear-gradient(180deg, #4d397a, #2c1e4b);
     color: #fff;
-    box-shadow: 0 0 10px rgba(115, 80, 180, 0.4);
+    box-shadow: 0 0 8px rgba(115, 80, 180, 0.4);
 }
 
 .bet-display {
-    min-width: 42px;
+    min-width: 38px;
     text-align: center;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 900;
     color: #ffd700;
     font-family: monospace;
@@ -253,29 +258,29 @@ html, body {
     background: linear-gradient(180deg, #1b384d, #0d1e2b);
     color: #7de0ff;
     border: 1px solid #2a668f;
-    padding: 8px 14px;
+    padding: 7px 12px;
 }
 
 .btn-auto.active {
     background: linear-gradient(180deg, #0e8a4a, #074625);
     color: #7dffb2;
     border-color: #17c964;
-    box-shadow: 0 0 12px rgba(23, 201, 100, 0.6);
+    box-shadow: 0 0 10px rgba(23, 201, 100, 0.6);
 }
 
 .btn-spin {
     background: linear-gradient(180deg, #ff416c, #ff4b2b);
     color: #fff;
-    font-size: 16px;
-    padding: 10px 32px;
-    border-radius: 24px;
-    box-shadow: 0 4px 15px rgba(255, 75, 43, 0.5), inset 0 2px 4px rgba(255, 255, 255, 0.4);
+    font-size: 15px;
+    padding: 8px 28px;
+    border-radius: 20px;
+    box-shadow: 0 3px 12px rgba(255, 75, 43, 0.5), inset 0 2px 4px rgba(255, 255, 255, 0.4);
     letter-spacing: 2px;
 }
 
 .btn-spin:hover:not(:disabled) {
     background: linear-gradient(180deg, #ff5e82, #ff6347);
-    box-shadow: 0 6px 20px rgba(255, 75, 43, 0.75);
+    box-shadow: 0 5px 18px rgba(255, 75, 43, 0.75);
     transform: translateY(-2px);
 }
 
@@ -286,7 +291,7 @@ html, body {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.78);
+    background: rgba(0, 0, 0, 0.8);
     backdrop-filter: blur(5px);
     display: none;
     align-items: center;
@@ -296,44 +301,44 @@ html, body {
 
 .modal-dialog {
     position: relative;
-    width: 580px;
+    width: 540px;
     max-width: 90vw;
     background: #190e2b url('assets/popup_window.png') no-repeat center;
     background-size: 100% 100%;
-    border-radius: 16px;
-    padding: 30px 36px;
+    border-radius: 14px;
+    padding: 26px 32px;
     border: 2px solid #8e622b;
     box-shadow: 0 15px 40px rgba(0, 0, 0, 0.9);
 }
 
 .modal-title {
     text-align: center;
-    font-size: 24px;
+    font-size: 22px;
     color: #ffd700;
     text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
-    margin-bottom: 16px;
+    margin-bottom: 14px;
 }
 
 .paytable-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-    margin-bottom: 18px;
+    gap: 8px;
+    margin-bottom: 16px;
 }
 
 .paytable-card {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     background: rgba(0, 0, 0, 0.5);
-    padding: 8px 12px;
+    padding: 6px 10px;
     border-radius: 8px;
     border: 1px solid rgba(255, 215, 0, 0.2);
 }
 
 .paytable-icon {
-    width: 38px;
-    height: 38px;
+    width: 34px;
+    height: 34px;
     object-fit: contain;
 }
 
@@ -343,13 +348,13 @@ html, body {
 }
 
 .paytable-name {
-    font-size: 12px;
+    font-size: 11px;
     color: #dfd4f8;
     font-weight: 700;
 }
 
 .paytable-mult {
-    font-size: 15px;
+    font-size: 14px;
     color: #ffd700;
     font-weight: 900;
 }
@@ -359,9 +364,9 @@ html, body {
     margin: 0 auto;
     background: linear-gradient(180deg, #ff416c, #ff4b2b);
     color: #fff;
-    padding: 8px 28px;
-    border-radius: 18px;
-    font-size: 14px;
+    padding: 8px 24px;
+    border-radius: 16px;
+    font-size: 13px;
 }
 
 /* Win Celebration */
@@ -370,18 +375,18 @@ html, body {
 }
 
 .celebration-title {
-    font-size: 28px;
+    font-size: 26px;
     font-weight: 900;
     color: #ffd700;
     text-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
-    margin-bottom: 10px;
+    margin-bottom: 8px;
 }
 
 .celebration-amount {
-    font-size: 38px;
+    font-size: 34px;
     font-weight: 900;
     color: #2eff8b;
-    text-shadow: 0 0 20px rgba(46, 255, 139, 0.9);
-    margin-bottom: 20px;
+    text-shadow: 0 0 18px rgba(46, 255, 139, 0.9);
+    margin-bottom: 16px;
     font-family: monospace;
 }
