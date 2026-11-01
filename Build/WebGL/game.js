@@ -28,17 +28,17 @@ const CONFIG = {
     freeSpinsAwarded: 5,
     freeSpinsMultiplier: 2,
     symbolWeights: [
-        { id: 'cherry', name: 'Cherry', weight: 40, sprite: 'assets/symbol_cherry.png' },
-        { id: 'bell',   name: 'Golden Bell', weight: 28, sprite: 'assets/symbol_bell.png' },
-        { id: 'bar',    name: 'Triple BAR', weight: 20, sprite: 'assets/symbol_bar.png' },
-        { id: 'seven',  name: 'Lucky Seven', weight: 12, sprite: 'assets/symbol_seven.png' }
+        { id: 'cherry', name: 'Cherry', label: 'CHERRY', weight: 40, sprite: 'assets/symbol_cherry.png' },
+        { id: 'bell',   name: 'Golden Bell', label: 'BELL', weight: 28, sprite: 'assets/symbol_bell.png' },
+        { id: 'bar',    name: 'Triple BAR', label: 'BAR', weight: 20, sprite: 'assets/symbol_bar.png' },
+        { id: 'seven',  name: 'Lucky Seven', label: '7', weight: 12, sprite: 'assets/symbol_seven.png' }
     ],
     paytable: {
-        'seven_3':  { mult: 100, title: 'GRAND JACKPOT! 777', isJackpot: true, freeSpins: 5 },
-        'bar_3':    { mult: 50,  title: 'MEGA WIN! TRIPLE BAR', isJackpot: false },
-        'bell_3':   { mult: 25,  title: 'BIG WIN! GOLDEN BELLS', isJackpot: false },
-        'cherry_3': { mult: 10,  title: 'NICE WIN! CHERRIES', isJackpot: false },
-        'cherry_2': { mult: 3,   title: 'MINI WIN! DOUBLE CHERRIES', isJackpot: false }
+        'seven_3':  { mult: 100, title: 'GRAND JACKPOT!', isJackpot: true, freeSpins: 5 },
+        'bar_3':    { mult: 50,  title: 'MEGA WIN!', isJackpot: false },
+        'bell_3':   { mult: 25,  title: 'BIG WIN!', isJackpot: false },
+        'cherry_3': { mult: 10,  title: 'NICE WIN!', isJackpot: false },
+        'cherry_2': { mult: 3,   title: 'MINI WIN (2x CHERRIES)!', isJackpot: false }
     }
 };
 
@@ -206,7 +206,7 @@ class RNGService {
     }
 }
 
-// --- REEL COLUMN WITH EXACT CENTER SNAPPING & SPRING BOUNCE ---
+// --- REEL COLUMN WITH CLEAR PAYLINE OPACITY CONTRAST ---
 class ReelStrip {
     constructor(index, x, config, rng, images) {
         this.index = index;
@@ -215,7 +215,6 @@ class ReelStrip {
         this.rng = rng;
         this.images = images;
 
-        // Circular symbol strip
         this.symbols = ['seven', 'bar', 'bell', 'cherry', 'seven', 'bar', 'bell', 'cherry'];
         this.state = 'IDLE'; // IDLE, ACCEL, SPIN, DECEL, BOUNCE
         this.yOffset = 0;
@@ -256,7 +255,6 @@ class ReelStrip {
         if (this.state === 'ACCEL') {
             this.elapsed += dt;
             const t = Math.min(1.0, this.elapsed / this.config.accelerationDuration);
-            // Ease-in quad
             this.speed = this.config.maxSpinSpeed * (t * t);
             this.yOffset += this.speed * dt;
 
@@ -273,20 +271,18 @@ class ReelStrip {
                 this.state = 'DECEL';
                 this.elapsed = 0;
 
-                // EXACT MULTIPLE OF H: Snaps dead-center on payline!
                 const decelTime = this.config.decelerationDuration;
                 const minDistance = this.speed * decelTime * 0.5;
                 const currentY = this.yOffset;
                 this.startOffset = currentY;
 
-                // Exact integer snap to symbol step
+                // Snap exact multiple of H for perfect payline alignment
                 this.targetOffset = Math.ceil((currentY + minDistance) / H) * H;
 
-                // Inject the target symbol at the exact center slot
+                // Inject target symbol at center payline slot
                 const centerIdx = (Math.floor(this.targetOffset / H) + this.symbols.length * 100) % this.symbols.length;
                 this.symbols[centerIdx] = this.targetSymbol;
 
-                // Fill adjacent rows with varied symbols
                 const prevIdx = (centerIdx - 1 + this.symbols.length) % this.symbols.length;
                 const nextIdx = (centerIdx + 1) % this.symbols.length;
                 if (!this.symbols[prevIdx]) this.symbols[prevIdx] = this.rng.getRandomSymbol();
@@ -295,7 +291,6 @@ class ReelStrip {
         } else if (this.state === 'DECEL') {
             this.elapsed += dt;
             const t = Math.min(1.0, this.elapsed / this.config.decelerationDuration);
-            // Ease-out cubic
             const easeOut = 1 - Math.pow(1 - t, 3);
             this.yOffset = this.startOffset + (this.targetOffset - this.startOffset) * easeOut;
 
@@ -316,7 +311,6 @@ class ReelStrip {
                     this.onStopCallback(this.index, this.targetSymbol);
                 }
             } else {
-                // Mechanical spring bounce
                 const offset = Math.sin(t * Math.PI) * this.config.bounceOvershoot * Math.exp(-t * 3.8);
                 this.yOffset = this.targetOffset + offset;
             }
@@ -333,7 +327,7 @@ class ReelStrip {
         const currentScrollIndex = Math.floor(this.yOffset / H);
         const subOffset = this.yOffset % H;
 
-        // Render 5 vertical slots: -2, -1, 0 (center), 1, 2
+        // Render slots: -2, -1 (top), 0 (center payline), 1 (bottom), 2
         for (let row = -2; row <= 2; row++) {
             const symIndex = (currentScrollIndex - row + totalSymbols * 100) % totalSymbols;
             const symId = this.symbols[symIndex];
@@ -344,22 +338,60 @@ class ReelStrip {
             const drawY = centerY + (row * H) + subOffset;
 
             if (drawY > -symH && drawY < this.config.canvasHeight + symH) {
-                // Win highlight for center row
-                if (row === 0 && this.isHighlighted && Math.abs(subOffset) < 4) {
-                    const pulse = 1.0 + Math.sin(this.pulseTime * 7) * 0.07;
-                    const glowW = W * pulse;
-                    const glowH = symH * pulse;
-                    const glowX = this.x - (glowW - W) / 2;
-                    const glowY = drawY - (glowH - symH) / 2;
+                ctx.save();
 
-                    ctx.save();
-                    ctx.shadowColor = '#ffd700';
-                    ctx.shadowBlur = 16;
-                    ctx.drawImage(img, glowX, glowY, glowW, glowH);
-                    ctx.restore();
+                if (row === 0) {
+                    // --- ACTIVE CENTER PAYLINE ROW ---
+                    if (this.state === 'IDLE') {
+                        ctx.globalAlpha = 1.0; // 100% full vibrant opacity
+
+                        if (this.isHighlighted && Math.abs(subOffset) < 3) {
+                            // Gold winning highlight badge
+                            ctx.fillStyle = 'rgba(255, 215, 0, 0.22)';
+                            ctx.strokeStyle = '#ffd700';
+                            ctx.lineWidth = 2.5;
+                            ctx.shadowColor = '#ffd700';
+                            ctx.shadowBlur = 18;
+                            
+                            const pad = 4;
+                            if (ctx.roundRect) {
+                                ctx.beginPath();
+                                ctx.roundRect(this.x - pad, drawY - pad, W + pad * 2, symH + pad * 2, 8);
+                                ctx.fill();
+                                ctx.stroke();
+                            } else {
+                                ctx.fillRect(this.x - pad, drawY - pad, W + pad * 2, symH + pad * 2);
+                                ctx.strokeRect(this.x - pad, drawY - pad, W + pad * 2, symH + pad * 2);
+                            }
+
+                            // Gentle scale pulse
+                            const pulse = 1.0 + Math.sin(this.pulseTime * 7) * 0.08;
+                            const glowW = W * pulse;
+                            const glowH = symH * pulse;
+                            const glowX = this.x - (glowW - W) / 2;
+                            const glowY = drawY - (glowH - symH) / 2;
+                            ctx.drawImage(img, glowX, glowY, glowW, glowH);
+                        } else {
+                            // Non-winning idle center payline symbol: bright, clear, sharp
+                            ctx.drawImage(img, this.x, drawY, W, symH);
+                        }
+                    } else {
+                        // Spinning
+                        ctx.globalAlpha = 0.85;
+                        ctx.drawImage(img, this.x, drawY, W, symH);
+                    }
                 } else {
+                    // --- INACTIVE TOP / BOTTOM NEIGHBORING ROWS ---
+                    // Dimmed significantly to 28% so player INSTANTLY knows they are inactive!
+                    if (this.state === 'IDLE') {
+                        ctx.globalAlpha = 0.28;
+                    } else {
+                        ctx.globalAlpha = 0.50;
+                    }
                     ctx.drawImage(img, this.x, drawY, W, symH);
                 }
+
+                ctx.restore();
             }
         }
     }
@@ -390,14 +422,19 @@ class PayoutEvaluator {
                     amount: bet * totalMult,
                     title: rule.title,
                     isJackpot: !!rule.isJackpot,
-                    freeSpins: rule.freeSpins || 0
+                    freeSpins: rule.freeSpins || 0,
+                    winningReels: [0, 1, 2]
                 };
             }
         }
 
-        // 2. Check 2-Cherries anywhere on payline
-        const cherryCount = outcome.filter(s => s === 'cherry').length;
-        if (cherryCount >= 2) {
+        // 2. Check 2-Cherries on center payline
+        const cherryIndices = [];
+        outcome.forEach((s, idx) => {
+            if (s === 'cherry') cherryIndices.push(idx);
+        });
+
+        if (cherryIndices.length >= 2) {
             const rule = CONFIG.paytable['cherry_2'];
             const totalMult = rule.mult * bonusMultiplier;
             return {
@@ -405,11 +442,12 @@ class PayoutEvaluator {
                 amount: bet * totalMult,
                 title: rule.title,
                 isJackpot: false,
-                freeSpins: 0
+                freeSpins: 0,
+                winningReels: cherryIndices
             };
         }
 
-        return { isWin: false, amount: 0, title: 'No Win', isJackpot: false, freeSpins: 0 };
+        return { isWin: false, amount: 0, title: 'No Win', isJackpot: false, freeSpins: 0, winningReels: [] };
     }
 }
 
@@ -467,7 +505,6 @@ class SlotGameApp {
             btnCollect: document.getElementById('btnCollect')
         };
 
-        // Initial resting machine cabinet frame
         this.dom.machineStage.style.backgroundImage = "url('assets/machine_frame_up.png')";
 
         // Event listeners
@@ -495,7 +532,6 @@ class SlotGameApp {
             cherry: 'assets/symbol_cherry.png'
         };
 
-        // Preload lever cabinet frames
         ['assets/machine_frame_up.png', 'assets/machine_frame_mid.png', 'assets/machine_frame_down.png'].forEach(src => {
             const img = new Image();
             img.src = src;
@@ -554,12 +590,12 @@ class SlotGameApp {
             this.ctx.fillRect(0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight);
         }
 
-        // 2. Draw symbols on all 3 reels
+        // 2. Draw symbols on all 3 reels with payline focus
         for (const reel of this.reels) {
             reel.render(this.ctx);
         }
 
-        // 3. Draw 3D cylindrical shadow overlay at top and bottom
+        // 3. Subtle 3D cylindrical shadow overlay at top and bottom
         const gradTop = this.ctx.createLinearGradient(0, 0, 0, 24);
         gradTop.addColorStop(0, 'rgba(0, 0, 0, 0.45)');
         gradTop.addColorStop(1, 'rgba(0, 0, 0, 0)');
@@ -626,7 +662,7 @@ class SlotGameApp {
 
         this.updateHUD();
         this.setControlsDisabled(true);
-        this.dom.status.textContent = isFree ? `FREE SPIN (${this.remainingFreeSpins + 1}) - 2X MULTIPLIER!` : 'REELS SPINNING... GOOD LUCK!';
+        this.dom.status.textContent = isFree ? `FREE SPIN (${this.remainingFreeSpins + 1}) - 2X MULTIPLIER ACTIVE!` : 'SPINNING REELS... GOOD LUCK!';
         this.dom.status.style.color = '#ffd700';
 
         this.audio.play('button');
@@ -649,7 +685,9 @@ class SlotGameApp {
                 const delay = isSuspense ? (CONFIG.reelStopDelay + CONFIG.suspenseDelay) : CONFIG.reelStopDelay;
 
                 if (isSuspense) {
-                    this.dom.status.textContent = 'MATCH DETECTED! SUSPENSE BUILDING...';
+                    const matchSymbolObj = CONFIG.symbolWeights.find(w => w.id === this.currentOutcome[0]);
+                    const label = matchSymbolObj ? matchSymbolObj.label : this.currentOutcome[0];
+                    this.dom.status.textContent = `2x [ ${label} ] MATCHED! SUSPENSE BUILDING FOR REEL 3...`;
                     this.dom.status.style.color = '#ff9900';
                 }
 
@@ -676,16 +714,22 @@ class SlotGameApp {
         const bonusMult = this.remainingFreeSpins > 0 ? CONFIG.freeSpinsMultiplier : 1;
         const result = PayoutEvaluator.evaluate(this.currentOutcome, this.bet, bonusMult);
 
+        // Format outcome symbols for marquee clarity: e.g. [ CHERRY | CHERRY | CHERRY ]
+        const outcomeLabels = this.currentOutcome.map(id => {
+            const symObj = CONFIG.symbolWeights.find(w => w.id === id);
+            return symObj ? symObj.label : id.toUpperCase();
+        });
+
         if (result.isWin) {
             this.balance += result.amount;
             this.lastWin = result.amount;
             this.dom.win.textContent = result.amount.toLocaleString();
             this.dom.win.classList.add('win-highlight');
 
-            // Highlight all winning reels
-            for (const reel of this.reels) {
-                reel.highlight();
-            }
+            // Highlight only winning reels
+            result.winningReels.forEach(idx => {
+                if (this.reels[idx]) this.reels[idx].highlight();
+            });
 
             if (result.freeSpins > 0) {
                 this.remainingFreeSpins += result.freeSpins;
@@ -698,11 +742,12 @@ class SlotGameApp {
                 return;
             } else {
                 this.audio.play('win');
-                this.dom.status.textContent = `${result.title}! +${result.amount.toLocaleString()} CREDITS!`;
+                this.dom.status.textContent = `🎉 ${result.title} [ ${outcomeLabels.join(' | ')} ] WON +${result.amount.toLocaleString()} CREDITS!`;
                 this.dom.status.style.color = '#2eff8b';
             }
         } else {
-            this.dom.status.textContent = 'TRY AGAIN! FORTUNE FAVORS THE BOLD.';
+            // Clearly show landed center payline outcome
+            this.dom.status.textContent = `[ ${outcomeLabels.join(' | ')} ] NO MATCH • TRY AGAIN!`;
             this.dom.status.style.color = '#bfa5e6';
             this.dom.win.classList.remove('win-highlight');
         }

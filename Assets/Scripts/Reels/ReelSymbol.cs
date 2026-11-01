@@ -7,7 +7,8 @@ namespace SlotGame.Reels
 {
     /// <summary>
     /// Visual component representing a single symbol on a reel.
-    /// Supports sprite assignment, win highlighting, and scale pulsation.
+    /// Supports sprite assignment, win highlighting, scale pulsation,
+    /// and payline focus opacity dimming.
     /// </summary>
     public class ReelSymbol : MonoBehaviour
     {
@@ -35,6 +36,16 @@ namespace SlotGame.Reels
             {
                 symbolImage.sprite = sprite;
                 symbolImage.enabled = true;
+            }
+        }
+
+        public void SetDimmed(bool isDimmed)
+        {
+            if (symbolImage != null)
+            {
+                Color c = symbolImage.color;
+                c.a = isDimmed ? 0.32f : 1.0f;
+                symbolImage.color = c;
             }
         }
 
@@ -77,7 +88,7 @@ namespace SlotGame.Reels
 
                     if (symbolImage != null)
                     {
-                        // Golden flash highlight
+                        // Golden flash highlight on payline win
                         symbolImage.color = Color.Lerp(Color.white, new Color(1f, 0.92f, 0.4f, 1f), t);
                     }
                     yield return null;
@@ -86,4 +97,3 @@ namespace SlotGame.Reels
         }
     }
 }
-

@@ -136,18 +136,83 @@ html, body {
     display: block;
 }
 
-/* Center Payline Guide */
+/* Vignette shading on Top and Bottom rows so the center row pops */
+.reel-shade-top {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 62px;
+    background: linear-gradient(180deg, rgba(8, 3, 20, 0.65) 0%, rgba(8, 3, 20, 0.35) 65%, transparent 100%);
+    pointer-events: none;
+    z-index: 4;
+}
+
+.reel-shade-bottom {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 62px;
+    background: linear-gradient(0deg, rgba(8, 3, 20, 0.65) 0%, rgba(8, 3, 20, 0.35) 65%, transparent 100%);
+    pointer-events: none;
+    z-index: 4;
+}
+
+/* Payline Spotlight Track (Emphasizes center row) */
+.payline-track {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 84px;
+    background: rgba(255, 215, 0, 0.05);
+    border-top: 1px dashed rgba(255, 215, 0, 0.3);
+    border-bottom: 1px dashed rgba(255, 215, 0, 0.3);
+    pointer-events: none;
+    z-index: 3;
+}
+
+/* Center Payline Guide Line */
 .payline-guide {
     position: absolute;
     left: 0;
     right: 0;
     top: 50%;
     height: 2px;
-    background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.75), transparent);
-    box-shadow: 0 0 8px rgba(255, 215, 0, 0.85);
+    background: linear-gradient(90deg, #ff416c, rgba(255, 215, 0, 0.9), #ff416c);
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.9), 0 0 4px #ff416c;
     pointer-events: none;
     transform: translateY(-50%);
     z-index: 5;
+}
+
+/* Payline Arrow Pointers (Left and Right) */
+.payline-pointer {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 13px;
+    font-weight: 900;
+    color: #ffd700;
+    text-shadow: 0 0 8px rgba(255, 215, 0, 0.9);
+    z-index: 10;
+    pointer-events: none;
+    animation: pointerPulse 1.2s infinite alternate ease-in-out;
+}
+
+.payline-left {
+    left: 3px;
+}
+
+.payline-right {
+    right: 3px;
+}
+
+@keyframes pointerPulse {
+    from { opacity: 0.65; transform: translateY(-50%) scale(0.9); }
+    to { opacity: 1.0; transform: translateY(-50%) scale(1.2); }
 }
 
 /* Interactive Lever Hotspot */
@@ -169,7 +234,7 @@ html, body {
 .message-bar {
     width: 100%;
     max-width: 680px;
-    height: 30px;
+    height: 32px;
     padding: 4px 12px;
     background: #110d1f;
     border: 1px solid #3c2a5a;
@@ -177,7 +242,7 @@ html, body {
     text-align: center;
     font-size: 13px;
     font-weight: 700;
-    letter-spacing: 1px;
+    letter-spacing: 0.8px;
     color: #ffd700;
     text-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
     display: flex;

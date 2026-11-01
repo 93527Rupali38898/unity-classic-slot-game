@@ -34,7 +34,16 @@
                 <!-- Middle Reel Window with Canvas -->
                 <div class="reel-window-container">
                     <canvas id="slotCanvas" class="reels-canvas" width="368" height="210"></canvas>
+                    
+                    <!-- Top & Bottom Row Vignette Shading -->
+                    <div class="reel-shade-top"></div>
+                    <div class="reel-shade-bottom"></div>
+
+                    <!-- Center Payline Spotlight Track & Pointers -->
+                    <div class="payline-track"></div>
                     <div class="payline-guide"></div>
+                    <div class="payline-pointer payline-left">▶</div>
+                    <div class="payline-pointer payline-right">◀</div>
                 </div>
 
                 <!-- Interactive Mechanical Lever Hotspot -->
@@ -104,13 +113,13 @@
                 <div class="paytable-card" style="grid-column: span 2;">
                     <img src="assets/symbol_cherry.png" alt="Cherry" class="paytable-icon">
                     <div class="paytable-info">
-                        <span class="paytable-name">2x Double Cherries (Anywhere on payline)</span>
+                        <span class="paytable-name">2x Double Cherries (Center Payline)</span>
                         <span class="paytable-mult">3x Bet</span>
                     </div>
                 </div>
             </div>
             <p style="text-align: center; color: #bfa5e6; font-size: 13px; margin-bottom: 16px;">
-                All payouts are multiplied by the active bet amount. Free spins feature a 2x win multiplier!
+                Only symbols landing on the bright center payline count toward payouts!
             </p>
             <button id="btnClosePaytable" class="btn modal-close-btn">CLOSE</button>
         </div>
