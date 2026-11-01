@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Unity Classic Slot Machine - WebGL Build</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -29,21 +29,18 @@
         </header>
 
         <!-- Slot Cabinet & Reels Stage -->
-        <main class="machine-stage">
-            <!-- Middle Reel Window -->
-            <div class="reel-window-container">
-                <canvas id="slotCanvas" class="reels-canvas" width="368" height="210"></canvas>
-                <div class="payline-guide"></div>
-            </div>
+        <div class="machine-stage-wrapper">
+            <main id="machineStage" class="machine-stage">
+                <!-- Middle Reel Window with Canvas -->
+                <div class="reel-window-container">
+                    <canvas id="slotCanvas" class="reels-canvas" width="368" height="210"></canvas>
+                    <div class="payline-guide"></div>
+                </div>
 
-            <!-- Bezel Glass Overlay -->
-            <div class="bezel-overlay"></div>
-
-            <!-- Interactive Mechanical Lever -->
-            <div id="leverHotspot" class="lever-hotspot" title="Click or pull lever to spin!">
-                <div id="leverSprite" class="lever-sprite"></div>
-            </div>
-        </main>
+                <!-- Interactive Mechanical Lever Hotspot -->
+                <div id="leverHotspot" class="lever-hotspot" title="Click or pull lever to spin!"></div>
+            </main>
+        </div>
 
         <!-- Dynamic Announcement Marquee -->
         <section id="statusMarquee" class="message-bar">
@@ -112,7 +109,7 @@
                     </div>
                 </div>
             </div>
-            <p style="text-align: center; color: #bfa5e6; font-size: 13px; margin-bottom: 20px;">
+            <p style="text-align: center; color: #bfa5e6; font-size: 13px; margin-bottom: 16px;">
                 All payouts are multiplied by the active bet amount. Free spins feature a 2x win multiplier!
             </p>
             <button id="btnClosePaytable" class="btn modal-close-btn">CLOSE</button>

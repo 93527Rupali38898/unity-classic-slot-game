@@ -12,3 +12,4 @@ namespace SlotGame.Logic
         Seven = 3      // Jackpot symbol (highest payout)
     }
 }
+

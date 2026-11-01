@@ -91,3 +91,4 @@ namespace SlotGame.Core
         public int freeSpinsMultiplier = 2;
     }
 }
+

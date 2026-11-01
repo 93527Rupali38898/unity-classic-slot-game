@@ -3,14 +3,15 @@
  * Clean, decoupled Object-Oriented implementation matching Unity architecture.
  */
 
-// --- CONFIGURATION & PAYTABLE ---
+// --- CONFIGURATION & ECONOMY ---
 const CONFIG = {
     reelCount: 3,
-    symbolHeight: 96,
-    symbolWidth: 96,
+    symbolHeight: 86,
+    symbolWidth: 86,
     canvasWidth: 368,
     canvasHeight: 210,
-    reelPositionsX: [20, 136, 252],
+    reelPositionsX: [14, 141, 269],
+    paylineCenterY: 62, // (210 - 86) / 2 = 62px
     startingBalance: 1000,
     defaultBet: 10,
     minBet: 5,
@@ -21,8 +22,8 @@ const CONFIG = {
     decelerationDuration: 0.45,
     reelStopDelay: 0.35,
     suspenseDelay: 0.85,
-    maxSpinSpeed: 1800,
-    bounceOvershoot: 18,
+    maxSpinSpeed: 1600,
+    bounceOvershoot: 16,
     freeSpinsAwarded: 5,
     freeSpinsMultiplier: 2,
     symbolWeights: [
@@ -75,7 +76,7 @@ class AudioManager {
                 const arrayBuffer = await res.arrayBuffer();
                 this.sounds[key] = await this.ctx.decodeAudioData(arrayBuffer);
             } catch (e) {
-                // Fallback synth will handle if audio file fetch fails
+                // Synthesizer handles audio if fetch is blocked
             }
         }
     }
@@ -107,7 +108,7 @@ class AudioManager {
             source.buffer = this.sounds.spin;
             source.loop = true;
             const gain = this.ctx.createGain();
-            gain.gain.value = 0.4;
+            gain.gain.value = 0.35;
             source.connect(gain);
             gain.connect(this.ctx.destination);
             source.start(0);
@@ -138,6 +139,13 @@ class AudioManager {
             gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
             osc.start(now);
             osc.stop(now + 0.05);
+        } else if (type === 'lever') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(160 * pitch, now);
+            gain.gain.setValueAtTime(0.5, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+            osc.start(now);
+            osc.stop(now + 0.15);
         } else if (type === 'stop') {
             osc.type = 'triangle';
             osc.frequency.setValueAtTime(140 * pitch, now);
@@ -169,7 +177,7 @@ class AudioManager {
     }
 }
 
-// --- RNG SERVICE ---
+// --- FAIR RNG SERVICE ---
 class RNGService {
     constructor(weights) {
         this.weights = weights;
@@ -197,7 +205,7 @@ class RNGService {
     }
 }
 
-// --- REEL STRIP ---
+// --- SINGLE REEL COLUMN (PHYSICS & RENDERING) ---
 class ReelStrip {
     constructor(index, x, config, rng, images) {
         this.index = index;
@@ -206,27 +214,27 @@ class ReelStrip {
         this.rng = rng;
         this.images = images;
 
-        this.symbols = [];
-        this.totalSlots = 6;
-        this.yOffset = 0;
+        this.symbols = ['seven', 'bar', 'bell', 'cherry', 'seven', 'bar'];
+        this.state = 'IDLE'; // IDLE, ACCEL, SPIN, DECEL, BOUNCE
+        this.yOffset = 0; // Current scroll offset
         this.speed = 0;
-        this.state = 'IDLE'; // IDLE, ACCEL, SPIN, STOPPING, BOUNCE
-        this.targetSymbol = null;
         this.elapsed = 0;
-        this.initialDistance = 0;
-        this.distanceRemaining = 0;
-        this.bounceElapsed = 0;
+        this.targetSymbol = null;
+        this.stopRequested = false;
 
-        // Initialize symbols stack
-        for (let i = 0; i < this.totalSlots; i++) {
-            this.symbols.push(this.rng.getRandomSymbol());
-        }
+        this.startOffset = 0;
+        this.targetOffset = 0;
+        this.bounceElapsed = 0;
+        this.isHighlighted = false;
+        this.pulseTime = 0;
     }
 
     startSpin() {
         this.state = 'ACCEL';
         this.elapsed = 0;
         this.speed = 0;
+        this.stopRequested = false;
+        this.isHighlighted = false;
     }
 
     requestStop(outcomeSymbol) {
@@ -235,11 +243,18 @@ class ReelStrip {
     }
 
     update(dt) {
+        const H = this.config.symbolHeight;
+
+        if (this.isHighlighted) {
+            this.pulseTime += dt;
+        }
+
         if (this.state === 'IDLE') return;
 
         if (this.state === 'ACCEL') {
             this.elapsed += dt;
             const t = Math.min(1.0, this.elapsed / this.config.accelerationDuration);
+            // Ease-in quad
             this.speed = this.config.maxSpinSpeed * (t * t);
             this.yOffset += this.speed * dt;
 
@@ -253,29 +268,33 @@ class ReelStrip {
             this.yOffset += this.speed * dt;
 
             if (this.stopRequested && this.elapsed >= this.config.minSpinDuration) {
-                this.state = 'STOPPING';
+                this.state = 'DECEL';
                 this.elapsed = 0;
 
-                // Set symbol above center to target
-                this.symbols[0] = this.targetSymbol;
-                // Calculate remaining distance to center line
-                this.distanceRemaining = (this.totalSlots * this.config.symbolHeight) - (this.yOffset % (this.totalSlots * this.config.symbolHeight));
-                this.initialDistance = this.distanceRemaining;
+                // Calculate exact stopping distance
+                const decelTime = this.config.decelerationDuration;
+                const minDistance = this.speed * decelTime * 0.5;
+                const steps = Math.ceil(minDistance / H) + 2;
+                const distanceToTravel = steps * H;
+
+                this.startOffset = this.yOffset;
+                this.targetOffset = this.startOffset + distanceToTravel;
+
+                // Inject target symbol at incoming index
+                const incomingIdx = (Math.floor(this.targetOffset / H) + 1) % this.symbols.length;
+                this.symbols[incomingIdx] = this.targetSymbol;
             }
-        } else if (this.state === 'STOPPING') {
+        } else if (this.state === 'DECEL') {
             this.elapsed += dt;
             const t = Math.min(1.0, this.elapsed / this.config.decelerationDuration);
-            // Ease-out cubic
-            const ease = 1 - Math.pow(1 - t, 3);
-            const targetStep = (1 - ease) * this.initialDistance;
-            const delta = this.distanceRemaining - targetStep;
-            this.yOffset += delta;
-            this.distanceRemaining = targetStep;
+            // Ease-out cubic: 1 - (1 - t)^3
+            const easeOut = 1 - Math.pow(1 - t, 3);
+            this.yOffset = this.startOffset + (this.targetOffset - this.startOffset) * easeOut;
 
             if (t >= 1.0) {
                 this.state = 'BOUNCE';
                 this.bounceElapsed = 0;
-                this.baseY = this.yOffset;
+                this.yOffset = this.targetOffset;
             }
         } else if (this.state === 'BOUNCE') {
             this.bounceElapsed += dt;
@@ -284,41 +303,67 @@ class ReelStrip {
 
             if (t >= 1.0) {
                 this.state = 'IDLE';
-                this.yOffset = this.baseY;
-                if (this.onStopCallback) this.onStopCallback(this.index, this.targetSymbol);
+                this.yOffset = this.targetOffset;
+                if (this.onStopCallback) {
+                    this.onStopCallback(this.index, this.targetSymbol);
+                }
             } else {
-                // Damped sine wave
-                const offset = Math.sin(t * Math.PI) * this.config.bounceOvershoot * Math.exp(-t * 3);
-                this.yOffset = this.baseY + offset;
+                // Mechanical spring bounce: damped sine
+                const offset = Math.sin(t * Math.PI) * this.config.bounceOvershoot * Math.exp(-t * 3.5);
+                this.yOffset = this.targetOffset + offset;
             }
-        }
-
-        // Handle loop wrap
-        const stripHeight = this.totalSlots * this.config.symbolHeight;
-        while (this.yOffset >= stripHeight) {
-            this.yOffset -= stripHeight;
-            // Shift array and push new symbol
-            this.symbols.pop();
-            this.symbols.unshift(this.rng.getRandomSymbol());
         }
     }
 
     render(ctx) {
-        const h = this.config.symbolHeight;
-        const w = this.config.symbolWidth;
-        const centerY = this.config.canvasHeight / 2;
+        const H = this.config.symbolHeight;
+        const W = this.config.symbolWidth;
+        const centerY = this.config.paylineCenterY; // 62px
 
-        for (let i = 0; i < this.totalSlots; i++) {
-            const symId = this.symbols[i];
+        // Determine symbol positions relative to center payline
+        const totalSymbols = this.symbols.length;
+        const currentScrollIndex = Math.floor(this.yOffset / H);
+        const subOffset = this.yOffset % H;
+
+        // Draw 5 visible/partially visible slots
+        for (let row = -2; row <= 2; row++) {
+            const symIndex = (currentScrollIndex - row + totalSymbols * 100) % totalSymbols;
+            const symId = this.symbols[symIndex];
             const img = this.images[symId];
+
             if (!img) continue;
 
-            const yPos = (i * h) + (this.yOffset % (this.totalSlots * h)) - (2 * h);
+            const drawY = centerY + (row * H) + subOffset;
 
-            if (yPos > -h && yPos < this.config.canvasHeight + h) {
-                ctx.drawImage(img, this.x, yPos, w, h);
+            // Only draw within vertical window boundaries
+            if (drawY > -H && drawY < this.config.canvasHeight + H) {
+                // Win highlight glow for center symbol
+                if (row === 0 && this.isHighlighted && Math.abs(subOffset) < 5) {
+                    const pulse = 1.0 + Math.sin(this.pulseTime * 8) * 0.08;
+                    const glowW = W * pulse;
+                    const glowH = H * pulse;
+                    const glowX = this.x - (glowW - W) / 2;
+                    const glowY = drawY - (glowH - H) / 2;
+
+                    ctx.save();
+                    ctx.shadowColor = '#ffd700';
+                    ctx.shadowBlur = 18;
+                    ctx.drawImage(img, glowX, glowY, glowW, glowH);
+                    ctx.restore();
+                } else {
+                    ctx.drawImage(img, this.x, drawY, W, H);
+                }
             }
         }
+    }
+
+    highlight() {
+        this.isHighlighted = true;
+        this.pulseTime = 0;
+    }
+
+    clearHighlight() {
+        this.isHighlighted = false;
     }
 }
 
@@ -327,7 +372,7 @@ class PayoutEvaluator {
     static evaluate(outcome, bet, bonusMultiplier = 1) {
         const [s0, s1, s2] = outcome;
 
-        // 1. Check 3-of-a-kind
+        // 1. Check 3-of-a-kind full match
         if (s0 === s1 && s1 === s2) {
             const ruleKey = `${s0}_3`;
             const rule = CONFIG.paytable[ruleKey];
@@ -361,7 +406,7 @@ class PayoutEvaluator {
     }
 }
 
-// --- MASTER GAME APPLICATION ---
+// --- MASTER APPLICATION CONTROLLER ---
 class SlotGameApp {
     constructor() {
         this.balance = CONFIG.startingBalance;
@@ -391,6 +436,7 @@ class SlotGameApp {
 
     initDOM() {
         this.dom = {
+            machineStage: document.getElementById('machineStage'),
             balance: document.getElementById('balanceDisplay'),
             bet: document.getElementById('betDisplay'),
             win: document.getElementById('winDisplay'),
@@ -406,7 +452,6 @@ class SlotGameApp {
             btnPaytable: document.getElementById('btnPaytable'),
             btnSound: document.getElementById('btnSoundToggle'),
             leverHotspot: document.getElementById('leverHotspot'),
-            leverSprite: document.getElementById('leverSprite'),
             paytableModal: document.getElementById('paytableModal'),
             btnClosePaytable: document.getElementById('btnClosePaytable'),
             celebrationModal: document.getElementById('celebrationModal'),
@@ -414,6 +459,9 @@ class SlotGameApp {
             celebrationAmount: document.getElementById('celebrationAmount'),
             btnCollect: document.getElementById('btnCollect')
         };
+
+        // Set initial resting machine cabinet frame
+        this.dom.machineStage.style.backgroundImage = "url('assets/machine_frame_up.png')";
 
         // Event listeners
         this.dom.btnSpin.addEventListener('click', () => this.handleSpinRequest());
@@ -433,11 +481,18 @@ class SlotGameApp {
 
     async preloadAssets() {
         const assetMap = {
+            backdrop: 'assets/reel_backdrop.png',
             seven: 'assets/symbol_seven.png',
             bar: 'assets/symbol_bar.png',
             bell: 'assets/symbol_bell.png',
             cherry: 'assets/symbol_cherry.png'
         };
+
+        // Also preload cabinet frames
+        ['assets/machine_frame_up.png', 'assets/machine_frame_mid.png', 'assets/machine_frame_down.png'].forEach(src => {
+            const img = new Image();
+            img.src = src;
+        });
 
         const promises = Object.entries(assetMap).map(([id, src]) => {
             return new Promise((resolve) => {
@@ -484,25 +539,46 @@ class SlotGameApp {
     }
 
     render() {
-        this.ctx.clearRect(0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight);
+        // 1. Draw reel cylinders background
+        if (this.images.backdrop) {
+            this.ctx.drawImage(this.images.backdrop, 0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight);
+        } else {
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.fillRect(0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight);
+        }
+
+        // 2. Draw symbols on all 3 reels
         for (const reel of this.reels) {
             reel.render(this.ctx);
         }
+
+        // 3. Draw subtle cylindrical 3D depth shadows at top and bottom
+        const gradTop = this.ctx.createLinearGradient(0, 0, 0, 28);
+        gradTop.addColorStop(0, 'rgba(0, 0, 0, 0.45)');
+        gradTop.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        this.ctx.fillStyle = gradTop;
+        this.ctx.fillRect(0, 0, CONFIG.canvasWidth, 28);
+
+        const gradBottom = this.ctx.createLinearGradient(0, CONFIG.canvasHeight - 28, 0, CONFIG.canvasHeight);
+        gradBottom.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        gradBottom.addColorStop(1, 'rgba(0, 0, 0, 0.45)');
+        this.ctx.fillStyle = gradBottom;
+        this.ctx.fillRect(0, CONFIG.canvasHeight - 28, CONFIG.canvasWidth, 28);
     }
 
     handleLeverPull() {
         if (this.isSpinning) return;
         this.audio.play('lever');
 
-        // Animate lever handle: up -> mid -> down -> mid -> up
-        const sprite = this.dom.leverSprite;
-        sprite.style.backgroundImage = "url('assets/lever_mid.png')";
+        // Animate cabinet lever: UP -> MID -> DOWN -> MID -> UP
+        const stage = this.dom.machineStage;
+        stage.style.backgroundImage = "url('assets/machine_frame_mid.png')";
         setTimeout(() => {
-            sprite.style.backgroundImage = "url('assets/lever_down.png')";
+            stage.style.backgroundImage = "url('assets/machine_frame_down.png')";
             setTimeout(() => {
-                sprite.style.backgroundImage = "url('assets/lever_mid.png')";
+                stage.style.backgroundImage = "url('assets/machine_frame_mid.png')";
                 setTimeout(() => {
-                    sprite.style.backgroundImage = "url('assets/lever_up.png')";
+                    stage.style.backgroundImage = "url('assets/machine_frame_up.png')";
                 }, 80);
             }, 120);
         }, 80);
@@ -536,6 +612,11 @@ class SlotGameApp {
         this.stoppedCount = 0;
         this.currentOutcome = this.rng.generateOutcome(CONFIG.reelCount);
 
+        // Clear previous highlights
+        for (const reel of this.reels) {
+            reel.clearHighlight();
+        }
+
         this.updateHUD();
         this.setControlsDisabled(true);
         this.dom.status.textContent = isFree ? `FREE SPIN (${this.remainingFreeSpins + 1}) - 2X MULTIPLIER!` : 'REELS SPINNING... GOOD LUCK!';
@@ -544,19 +625,19 @@ class SlotGameApp {
         this.audio.play('button');
         this.audio.playSpinLoop();
 
-        // Start all reels
+        // Start all reels spinning
         for (const reel of this.reels) {
             reel.startSpin();
         }
 
-        // Staggered stop schedule
+        // Staggered stop sequence
         setTimeout(() => {
             this.reels[0].requestStop(this.currentOutcome[0]);
 
             setTimeout(() => {
                 this.reels[1].requestStop(this.currentOutcome[1]);
 
-                // Anticipation Suspense check: if reels 0 and 1 match!
+                // Anticipation Suspense: if reels 0 and 1 match!
                 const isSuspense = (this.currentOutcome[0] === this.currentOutcome[1]);
                 const delay = isSuspense ? (CONFIG.reelStopDelay + CONFIG.suspenseDelay) : CONFIG.reelStopDelay;
 
@@ -593,6 +674,11 @@ class SlotGameApp {
             this.lastWin = result.amount;
             this.dom.win.textContent = result.amount.toLocaleString();
             this.dom.win.classList.add('win-highlight');
+
+            // Highlight all winning reels
+            for (const reel of this.reels) {
+                reel.highlight();
+            }
 
             if (result.freeSpins > 0) {
                 this.remainingFreeSpins += result.freeSpins;
