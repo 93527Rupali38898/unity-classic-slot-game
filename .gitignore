@@ -1,0 +1,30 @@
+# Unity generated files
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+MemoryCaptures/
+
+# Visual Studio / VSCode
+.vs/
+.vscode/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+
+# OS generated
+.DS_Store
+Thumbs.db
+__MACOSX/
+
+# Keep WebGL Build for assignment submission
+!Build/
+!Build/WebGL/
+!Build/WebGL/**
