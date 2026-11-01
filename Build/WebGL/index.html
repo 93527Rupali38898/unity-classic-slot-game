@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unity Classic Slot Machine - WebGL Build</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="game-wrapper">
+        <!-- Top HUD -->
+        <header class="top-hud">
+            <div class="hud-item">
+                <span class="hud-label">CREDITS</span>
+                <span id="balanceDisplay" class="hud-value">1,000</span>
+            </div>
+            <div class="hud-item">
+                <span class="hud-label">CURRENT BET</span>
+                <span id="betDisplay" class="hud-value">10</span>
+            </div>
+            <div class="hud-item">
+                <span class="hud-label">LAST WIN</span>
+                <span id="winDisplay" class="hud-value">0</span>
+            </div>
+            <div id="freeSpinsBadge" class="free-spins-indicator">
+                FREE SPINS: <span id="freeSpinsCount">0</span> (2X)
+            </div>
+        </header>
+
+        <!-- Slot Cabinet & Reels Stage -->
+        <main class="machine-stage">
+            <!-- Middle Reel Window -->
+            <div class="reel-window-container">
+                <canvas id="slotCanvas" class="reels-canvas" width="368" height="210"></canvas>
+                <div class="payline-guide"></div>
+            </div>
+
+            <!-- Bezel Glass Overlay -->
+            <div class="bezel-overlay"></div>
+
+            <!-- Interactive Mechanical Lever -->
+            <div id="leverHotspot" class="lever-hotspot" title="Click or pull lever to spin!">
+                <div id="leverSprite" class="lever-sprite"></div>
+            </div>
+        </main>
+
+        <!-- Dynamic Announcement Marquee -->
+        <section id="statusMarquee" class="message-bar">
+            PULL LEVER OR CLICK SPIN TO PLAY!
+        </section>
+
+        <!-- Bottom Controls -->
+        <footer class="bottom-controls">
+            <div class="control-group">
+                <button id="btnBetMinus" class="btn btn-secondary" title="Decrease Bet">-</button>
+                <div id="controlBetDisplay" class="bet-display">10</div>
+                <button id="btnBetPlus" class="btn btn-secondary" title="Increase Bet">+</button>
+                <button id="btnMaxBet" class="btn btn-secondary">MAX BET</button>
+            </div>
+
+            <div class="control-group">
+                <button id="btnAutoSpin" class="btn btn-auto">AUTO SPIN</button>
+                <button id="btnSpin" class="btn btn-spin">SPIN</button>
+            </div>
+
+            <div class="control-group">
+                <button id="btnPaytable" class="btn btn-secondary">RULES</button>
+                <button id="btnSoundToggle" class="btn btn-secondary" title="Toggle Sound">🔊</button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Paytable & Rules Modal -->
+    <div id="paytableModal" class="modal-overlay">
+        <div class="modal-dialog">
+            <h2 class="modal-title">PAYTABLE & RULES</h2>
+            <div class="paytable-grid">
+                <div class="paytable-card">
+                    <img src="assets/symbol_seven.png" alt="7" class="paytable-icon">
+                    <div class="paytable-info">
+                        <span class="paytable-name">3x Lucky 7s (Jackpot)</span>
+                        <span class="paytable-mult">100x Bet + 5 Free Spins</span>
+                    </div>
+                </div>
+                <div class="paytable-card">
+                    <img src="assets/symbol_bar.png" alt="BAR" class="paytable-icon">
+                    <div class="paytable-info">
+                        <span class="paytable-name">3x Triple BAR</span>
+                        <span class="paytable-mult">50x Bet</span>
+                    </div>
+                </div>
+                <div class="paytable-card">
+                    <img src="assets/symbol_bell.png" alt="Bell" class="paytable-icon">
+                    <div class="paytable-info">
+                        <span class="paytable-name">3x Golden Bells</span>
+                        <span class="paytable-mult">25x Bet</span>
+                    </div>
+                </div>
+                <div class="paytable-card">
+                    <img src="assets/symbol_cherry.png" alt="Cherry" class="paytable-icon">
+                    <div class="paytable-info">
+                        <span class="paytable-name">3x Cherry Trio</span>
+                        <span class="paytable-mult">10x Bet</span>
+                    </div>
+                </div>
+                <div class="paytable-card" style="grid-column: span 2;">
+                    <img src="assets/symbol_cherry.png" alt="Cherry" class="paytable-icon">
+                    <div class="paytable-info">
+                        <span class="paytable-name">2x Double Cherries (Anywhere on payline)</span>
+                        <span class="paytable-mult">3x Bet</span>
+                    </div>
+                </div>
+            </div>
+            <p style="text-align: center; color: #bfa5e6; font-size: 13px; margin-bottom: 20px;">
+                All payouts are multiplied by the active bet amount. Free spins feature a 2x win multiplier!
+            </p>
+            <button id="btnClosePaytable" class="btn modal-close-btn">CLOSE</button>
+        </div>
+    </div>
+
+    <!-- Win / Jackpot Celebration Modal -->
+    <div id="celebrationModal" class="modal-overlay">
+        <div class="modal-dialog celebration-box">
+            <h2 id="celebrationTitle" class="celebration-title">GRAND JACKPOT!</h2>
+            <div id="celebrationAmount" class="celebration-amount">+1,000 COINS</div>
+            <button id="btnCollect" class="btn btn-spin" style="margin: 0 auto;">COLLECT</button>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
