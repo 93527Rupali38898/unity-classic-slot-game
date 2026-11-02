@@ -94,7 +94,7 @@ html, body {
     to { transform: scale(1.04); box-shadow: 0 0 16px #ff0077; }
 }
 
-/* Machine Stage Wrapper - Dynamically fits available height */
+/* Machine Stage Wrapper */
 .machine-stage-wrapper {
     position: relative;
     flex: 1;
@@ -136,83 +136,30 @@ html, body {
     display: block;
 }
 
-/* Vignette shading on Top and Bottom rows so the center row pops */
-.reel-shade-top {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 62px;
-    background: linear-gradient(180deg, rgba(8, 3, 20, 0.65) 0%, rgba(8, 3, 20, 0.35) 65%, transparent 100%);
-    pointer-events: none;
-    z-index: 4;
-}
-
-.reel-shade-bottom {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 62px;
-    background: linear-gradient(0deg, rgba(8, 3, 20, 0.65) 0%, rgba(8, 3, 20, 0.35) 65%, transparent 100%);
-    pointer-events: none;
-    z-index: 4;
-}
-
-/* Payline Spotlight Track (Emphasizes center row) */
-.payline-track {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    height: 84px;
-    background: rgba(255, 215, 0, 0.05);
-    border-top: 1px dashed rgba(255, 215, 0, 0.3);
-    border-bottom: 1px dashed rgba(255, 215, 0, 0.3);
-    pointer-events: none;
-    z-index: 3;
-}
-
-/* Center Payline Guide Line */
-.payline-guide {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 50%;
-    height: 2px;
-    background: linear-gradient(90deg, #ff416c, rgba(255, 215, 0, 0.9), #ff416c);
-    box-shadow: 0 0 10px rgba(255, 215, 0, 0.9), 0 0 4px #ff416c;
-    pointer-events: none;
-    transform: translateY(-50%);
-    z-index: 5;
-}
-
-/* Payline Arrow Pointers (Left and Right) */
-.payline-pointer {
+/* Subtle Payline Bezel Markers on Side Edges (No line drawn over symbols!) */
+.bezel-marker {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    font-size: 13px;
-    font-weight: 900;
-    color: #ffd700;
-    text-shadow: 0 0 8px rgba(255, 215, 0, 0.9);
+    width: 0;
+    height: 0;
+    pointer-events: none;
     z-index: 10;
-    pointer-events: none;
-    animation: pointerPulse 1.2s infinite alternate ease-in-out;
+    filter: drop-shadow(0 0 4px #ffd700);
 }
 
-.payline-left {
-    left: 3px;
+.marker-left {
+    left: 0;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 6px solid #ffd700;
 }
 
-.payline-right {
-    right: 3px;
-}
-
-@keyframes pointerPulse {
-    from { opacity: 0.65; transform: translateY(-50%) scale(0.9); }
-    to { opacity: 1.0; transform: translateY(-50%) scale(1.2); }
+.marker-right {
+    right: 0;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-right: 6px solid #ffd700;
 }
 
 /* Interactive Lever Hotspot */
