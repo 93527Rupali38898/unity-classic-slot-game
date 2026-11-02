@@ -206,7 +206,202 @@ class RNGService {
     }
 }
 
-// --- REEL COLUMN WITH CLEAR PAYLINE OPACITY CONTRAST ---
+// --- CELEBRATION SPARKLE PARTICLE ---
+class SparkleParticle {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 25 + Math.random() * 65;
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed;
+        this.size = 2.5 + Math.random() * 3.5;
+        this.life = 0;
+        this.maxLife = 0.6 + Math.random() * 0.7;
+        this.color = Math.random() > 0.3 ? '#ffd700' : '#ffffff';
+    }
+
+    update(dt) {
+        this.life += dt;
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.vy += 30 * dt; // subtle gravity
+    }
+
+    render(ctx) {
+        const progress = this.life / this.maxLife;
+        if (progress >= 1) return;
+        const alpha = Math.sin(progress * Math.PI);
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = this.color;
+        ctx.shadowColor = '#ffd700';
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size * (1 - progress * 0.4), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
+// --- CINEMATIC WIN SPOTLIGHT & DARK VEIL MANAGER ---
+class WinSpotlightManager {
+    constructor(config, images) {
+        this.config = config;
+        this.images = images;
+        this.isActive = false;
+        this.veilAlpha = 0;
+        this.targetVeilAlpha = 0;
+        this.winningReels = [];
+        this.outcome = [];
+        this.particles = [];
+        this.timer = 0;
+        this.beamPulse = 0;
+    }
+
+    start(winningReels, outcome) {
+        this.isActive = true;
+        this.targetVeilAlpha = 0.76;
+        this.winningReels = winningReels || [];
+        this.outcome = outcome || [];
+        this.timer = 0;
+        this.particles = [];
+
+        // Spawn sparkle particles on each winning symbol center
+        this.winningReels.forEach(idx => {
+            const centerX = this.config.reelPositionsX[idx] + this.config.symbolWidth / 2;
+            const centerY = this.config.paylineCenterY + this.config.symbolHeight / 2;
+            for (let i = 0; i < 18; i++) {
+                this.particles.push(new SparkleParticle(centerX, centerY));
+            }
+        });
+    }
+
+    stop() {
+        this.isActive = false;
+        this.targetVeilAlpha = 0;
+        this.particles = [];
+    }
+
+    update(dt) {
+        // Smooth transition of the darkness veil
+        const lerpSpeed = this.isActive ? 4.5 : 6.0;
+        this.veilAlpha += (this.targetVeilAlpha - this.veilAlpha) * Math.min(1.0, dt * lerpSpeed);
+
+        if (this.isActive) {
+            this.timer += dt;
+            this.beamPulse += dt * 5;
+
+            // Continuous gentle sparkle spawn during win
+            if (Math.random() < 0.28 && this.winningReels.length > 0) {
+                const randReel = this.winningReels[Math.floor(Math.random() * this.winningReels.length)];
+                const rx = this.config.reelPositionsX[randReel] + Math.random() * this.config.symbolWidth;
+                const ry = this.config.paylineCenterY + Math.random() * this.config.symbolHeight;
+                this.particles.push(new SparkleParticle(rx, ry));
+            }
+        }
+
+        // Update active particles
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            this.particles[i].update(dt);
+            if (this.particles[i].life >= this.particles[i].maxLife) {
+                this.particles.splice(i, 1);
+            }
+        }
+    }
+
+    render(ctx) {
+        if (this.veilAlpha <= 0.01) return;
+
+        ctx.save();
+
+        // 1. CINEMATIC DARK VEIL (Shrouds the entire non-winning reel area in darkness!)
+        ctx.fillStyle = `rgba(5, 2, 12, ${this.veilAlpha})`;
+        ctx.fillRect(0, 0, this.config.canvasWidth, this.config.canvasHeight);
+
+        // 2. RE-RENDER ONLY THE WINNING SYMBOLS IN ILLUMINATED GOLDEN SPOTLIGHTS!
+        const W = this.config.symbolWidth;
+        const H = this.config.symbolHeight;
+        const drawY = this.config.paylineCenterY;
+
+        this.winningReels.forEach(idx => {
+            const symId = this.outcome[idx];
+            const img = this.images[symId];
+            if (!img) return;
+
+            const posX = this.config.reelPositionsX[idx];
+            const centerX = posX + W / 2;
+            const centerY = drawY + H / 2;
+
+            // Soft radial spotlight glow behind winning symbol
+            const spotlight = ctx.createRadialGradient(centerX, centerY, 15, centerX, centerY, 55);
+            spotlight.addColorStop(0, 'rgba(255, 215, 0, 0.45)');
+            spotlight.addColorStop(0.6, 'rgba(255, 215, 0, 0.18)');
+            spotlight.addColorStop(1, 'rgba(255, 215, 0, 0)');
+            ctx.fillStyle = spotlight;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 55, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Pulsating scale bounce
+            const pulse = 1.0 + Math.sin(this.timer * 7) * 0.07;
+            const glowW = W * pulse;
+            const glowH = H * pulse;
+            const glowX = posX - (glowW - W) / 2;
+            const glowY = drawY - (glowH - H) / 2;
+
+            // Draw glowing golden border badge
+            ctx.shadowColor = '#ffd700';
+            ctx.shadowBlur = 20;
+            ctx.strokeStyle = '#ffd700';
+            ctx.lineWidth = 2.5;
+            ctx.fillStyle = 'rgba(255, 215, 0, 0.15)';
+            const pad = 5;
+
+            if (ctx.roundRect) {
+                ctx.beginPath();
+                ctx.roundRect(posX - pad, drawY - pad, W + pad * 2, H + pad * 2, 8);
+                ctx.fill();
+                ctx.stroke();
+            } else {
+                ctx.fillRect(posX - pad, drawY - pad, W + pad * 2, H + pad * 2);
+                ctx.strokeRect(posX - pad, drawY - pad, W + pad * 2, H + pad * 2);
+            }
+
+            // Draw winning symbol crisp at 100% full brightness
+            ctx.drawImage(img, glowX, glowY, glowW, glowH);
+        });
+
+        // 3. GLOWING ENERGY BEAM CONNECTING WINNING SYMBOLS
+        if (this.winningReels.length >= 2) {
+            ctx.beginPath();
+            const startX = this.config.reelPositionsX[this.winningReels[0]] + W / 2;
+            const endX = this.config.reelPositionsX[this.winningReels[this.winningReels.length - 1]] + W / 2;
+            const beamY = drawY + H / 2;
+
+            ctx.strokeStyle = 'rgba(255, 215, 0, 0.9)';
+            ctx.lineWidth = 2.5;
+            ctx.shadowColor = '#ffd700';
+            ctx.shadowBlur = 14;
+            ctx.setLineDash([8, 4]);
+            ctx.lineDashOffset = -this.beamPulse * 10;
+            ctx.moveTo(startX, beamY);
+            ctx.lineTo(endX, beamY);
+            ctx.stroke();
+            ctx.setLineDash([]); // reset
+        }
+
+        // 4. RENDER GOLDEN SPARKLE PARTICLES
+        for (const p of this.particles) {
+            p.render(ctx);
+        }
+
+        ctx.restore();
+    }
+}
+
+// --- REEL STRIP ---
 class ReelStrip {
     constructor(index, x, config, rng, images) {
         this.index = index;
@@ -226,8 +421,6 @@ class ReelStrip {
         this.startOffset = 0;
         this.targetOffset = 0;
         this.bounceElapsed = 0;
-        this.isHighlighted = false;
-        this.pulseTime = 0;
     }
 
     startSpin() {
@@ -235,7 +428,6 @@ class ReelStrip {
         this.elapsed = 0;
         this.speed = 0;
         this.stopRequested = false;
-        this.isHighlighted = false;
     }
 
     requestStop(outcomeSymbol) {
@@ -245,10 +437,6 @@ class ReelStrip {
 
     update(dt) {
         const H = this.config.slotStepH; // 84px
-
-        if (this.isHighlighted) {
-            this.pulseTime += dt;
-        }
 
         if (this.state === 'IDLE') return;
 
@@ -341,68 +529,17 @@ class ReelStrip {
                 ctx.save();
 
                 if (row === 0) {
-                    // --- ACTIVE CENTER PAYLINE ROW ---
-                    if (this.state === 'IDLE') {
-                        ctx.globalAlpha = 1.0; // 100% full vibrant opacity
-
-                        if (this.isHighlighted && Math.abs(subOffset) < 3) {
-                            // Gold winning highlight badge
-                            ctx.fillStyle = 'rgba(255, 215, 0, 0.22)';
-                            ctx.strokeStyle = '#ffd700';
-                            ctx.lineWidth = 2.5;
-                            ctx.shadowColor = '#ffd700';
-                            ctx.shadowBlur = 18;
-                            
-                            const pad = 4;
-                            if (ctx.roundRect) {
-                                ctx.beginPath();
-                                ctx.roundRect(this.x - pad, drawY - pad, W + pad * 2, symH + pad * 2, 8);
-                                ctx.fill();
-                                ctx.stroke();
-                            } else {
-                                ctx.fillRect(this.x - pad, drawY - pad, W + pad * 2, symH + pad * 2);
-                                ctx.strokeRect(this.x - pad, drawY - pad, W + pad * 2, symH + pad * 2);
-                            }
-
-                            // Gentle scale pulse
-                            const pulse = 1.0 + Math.sin(this.pulseTime * 7) * 0.08;
-                            const glowW = W * pulse;
-                            const glowH = symH * pulse;
-                            const glowX = this.x - (glowW - W) / 2;
-                            const glowY = drawY - (glowH - symH) / 2;
-                            ctx.drawImage(img, glowX, glowY, glowW, glowH);
-                        } else {
-                            // Non-winning idle center payline symbol: bright, clear, sharp
-                            ctx.drawImage(img, this.x, drawY, W, symH);
-                        }
-                    } else {
-                        // Spinning
-                        ctx.globalAlpha = 0.85;
-                        ctx.drawImage(img, this.x, drawY, W, symH);
-                    }
+                    // Center active payline: 100% full vibrant opacity
+                    ctx.globalAlpha = this.state === 'IDLE' ? 1.0 : 0.88;
                 } else {
-                    // --- INACTIVE TOP / BOTTOM NEIGHBORING ROWS ---
-                    // Dimmed significantly to 28% so player INSTANTLY knows they are inactive!
-                    if (this.state === 'IDLE') {
-                        ctx.globalAlpha = 0.28;
-                    } else {
-                        ctx.globalAlpha = 0.50;
-                    }
-                    ctx.drawImage(img, this.x, drawY, W, symH);
+                    // Neighboring top and bottom rows: dimmed so player immediately sees center focus!
+                    ctx.globalAlpha = this.state === 'IDLE' ? 0.26 : 0.45;
                 }
 
+                ctx.drawImage(img, this.x, drawY, W, symH);
                 ctx.restore();
             }
         }
-    }
-
-    highlight() {
-        this.isHighlighted = true;
-        this.pulseTime = 0;
-    }
-
-    clearHighlight() {
-        this.isHighlighted = false;
     }
 }
 
@@ -474,6 +611,7 @@ class SlotGameApp {
         this.initDOM();
         this.preloadAssets().then(() => {
             this.initReels();
+            this.winSpotlight = new WinSpotlightManager(CONFIG, this.images);
             this.startLoop();
             this.updateHUD();
         });
@@ -579,6 +717,9 @@ class SlotGameApp {
         for (const reel of this.reels) {
             reel.update(dt);
         }
+        if (this.winSpotlight) {
+            this.winSpotlight.update(dt);
+        }
     }
 
     render() {
@@ -590,12 +731,17 @@ class SlotGameApp {
             this.ctx.fillRect(0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight);
         }
 
-        // 2. Draw symbols on all 3 reels with payline focus
+        // 2. Draw symbols on all 3 reels
         for (const reel of this.reels) {
             reel.render(this.ctx);
         }
 
-        // 3. Subtle 3D cylindrical shadow overlay at top and bottom
+        // 3. CINEMATIC WIN SPOTLIGHT & DARK VEIL OVERLAY (drapes all non-winning symbols in dark opacity!)
+        if (this.winSpotlight) {
+            this.winSpotlight.render(this.ctx);
+        }
+
+        // 4. Subtle 3D cylindrical shadow overlay at top and bottom
         const gradTop = this.ctx.createLinearGradient(0, 0, 0, 24);
         gradTop.addColorStop(0, 'rgba(0, 0, 0, 0.45)');
         gradTop.addColorStop(1, 'rgba(0, 0, 0, 0)');
@@ -655,9 +801,9 @@ class SlotGameApp {
         this.stoppedCount = 0;
         this.currentOutcome = this.rng.generateOutcome(CONFIG.reelCount);
 
-        // Clear previous highlights
-        for (const reel of this.reels) {
-            reel.clearHighlight();
+        // Turn off any previous win spotlight
+        if (this.winSpotlight) {
+            this.winSpotlight.stop();
         }
 
         this.updateHUD();
@@ -714,7 +860,6 @@ class SlotGameApp {
         const bonusMult = this.remainingFreeSpins > 0 ? CONFIG.freeSpinsMultiplier : 1;
         const result = PayoutEvaluator.evaluate(this.currentOutcome, this.bet, bonusMult);
 
-        // Format outcome symbols for marquee clarity: e.g. [ CHERRY | CHERRY | CHERRY ]
         const outcomeLabels = this.currentOutcome.map(id => {
             const symObj = CONFIG.symbolWeights.find(w => w.id === id);
             return symObj ? symObj.label : id.toUpperCase();
@@ -726,10 +871,10 @@ class SlotGameApp {
             this.dom.win.textContent = result.amount.toLocaleString();
             this.dom.win.classList.add('win-highlight');
 
-            // Highlight only winning reels
-            result.winningReels.forEach(idx => {
-                if (this.reels[idx]) this.reels[idx].highlight();
-            });
+            // Trigger the cinematic dark veil spotlight on winning symbols!
+            if (this.winSpotlight) {
+                this.winSpotlight.start(result.winningReels, this.currentOutcome);
+            }
 
             if (result.freeSpins > 0) {
                 this.remainingFreeSpins += result.freeSpins;
@@ -746,7 +891,6 @@ class SlotGameApp {
                 this.dom.status.style.color = '#2eff8b';
             }
         } else {
-            // Clearly show landed center payline outcome
             this.dom.status.textContent = `[ ${outcomeLabels.join(' | ')} ] NO MATCH • TRY AGAIN!`;
             this.dom.status.style.color = '#bfa5e6';
             this.dom.win.classList.remove('win-highlight');

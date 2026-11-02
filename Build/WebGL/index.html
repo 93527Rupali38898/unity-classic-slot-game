@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Unity Classic Slot Machine - WebGL Build</title>
+    <!-- Casino Favicon -->
+    <link rel="icon" type="image/png" href="assets/favicon.png">
+    <link rel="shortcut icon" href="assets/favicon.png">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -35,9 +38,14 @@
                 <div class="reel-window-container">
                     <canvas id="slotCanvas" class="reels-canvas" width="368" height="210"></canvas>
                     
-                    <!-- Elegant Side Bezel Payline Indicators (No line cutting across reels) -->
-                    <div class="bezel-marker marker-left" title="Payline Center"></div>
-                    <div class="bezel-marker marker-right" title="Payline Center"></div>
+                    <!-- Curved Glass Reflection & Shadows -->
+                    <div class="reel-shade-top"></div>
+                    <div class="reel-shade-bottom"></div>
+                    <div class="reel-glass-glare"></div>
+
+                    <!-- Sleek Payline Side Pointers -->
+                    <div class="payline-pointer payline-left">▶</div>
+                    <div class="payline-pointer payline-right">◀</div>
                 </div>
 
                 <!-- Interactive Mechanical Lever Hotspot -->
@@ -113,7 +121,7 @@
                 </div>
             </div>
             <p style="text-align: center; color: #bfa5e6; font-size: 13px; margin-bottom: 16px;">
-                Only symbols landing on the bright center payline count toward payouts!
+                Winning symbols light up in the center payline while other rows fade into dark focus!
             </p>
             <button id="btnClosePaytable" class="btn modal-close-btn">CLOSE</button>
         </div>
